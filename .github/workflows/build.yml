@@ -19,18 +19,38 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Unzip and LIST ISI
+      - name: Build Hybrid BlackWhite
         run: |
           rm -rf source
-          mkdir -p source
+          mkdir source
+          # 1. Bongkar mesin lama yang bisa jadi APK
+          unzip -o Juken-main.zip -d source
+          # 2. Tiban tema blackwhite baru di atasnya
           unzip -o Juken-blackwhite-dark-light.zip -d source
-          echo "========== ISI ASLI ZIP =========="
-          find source -type f -maxdepth 4 | sort
+          echo "=== HASIL GABUNGAN ==="
+          find source -name "gradlew" | head -n 1
           ls -lh source/
 
-      - name: Upload ZIP Content for Check
-        if: always()
+      - name: Make executable and Build
+        run: |
+          GP=$(find source -name "gradlew" | head -n 1)
+          DIR=$(dirname "$GP")
+          cd $DIR
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Upload APK Final
         uses: actions/upload-artifact@v4
         with:
-          name: ISI-ZIP-BLACKWHITE
-          path: source/
+          name: MSMSF-RACING-V12-BLACKWHITE-FINAL
+          path: "**/*.apk"
+
+      - name: Release V.12 FIX 403
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: V.12
+          name: MSMSF RACING V.12 BlackWhite FIX
+          body: BlackWhite Dark Light - ECU JUKEN 5+ - Hybrid build
+          files: "**/*.apk"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
