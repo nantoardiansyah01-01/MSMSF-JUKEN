@@ -3,33 +3,39 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+        with:
+          fetch-depth: 0
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Auto-Restore Juken-main.zip yang hilang
+        run: |
+          ls -lh *.zip
+          if [ ! -f Juken-main.zip ]; then
+            echo "Juken-main.zip hilang, balikin dari commit #6..."
+            git checkout a630993 -- Juken-main.zip || git checkout HEAD~5 -- Juken-main.zip || git log --all --full-history -- "*Juken-main.zip" --pretty=format:"%H" | head -n 1 | xargs -I {} git checkout {} -- Juken-main.zip
+            ls -lh Juken-main.zip
+          else
+            echo "Juken-main.zip udah ada!"
+          fi
+
       - name: Build Hybrid BlackWhite
         run: |
-          rm -rf source
-          mkdir source
-          # 1. Bongkar mesin lama yang bisa jadi APK
+          rm -rf source && mkdir source
           unzip -o Juken-main.zip -d source
-          # 2. Tiban tema blackwhite baru di atasnya
           unzip -o Juken-blackwhite-dark-light.zip -d source
-          echo "=== HASIL GABUNGAN ==="
-          find source -name "gradlew" | head -n 1
-          ls -lh source/
+          find source -name "gradlew" | head -n 5
 
       - name: Make executable and Build
         run: |
@@ -37,7 +43,7 @@ jobs:
           DIR=$(dirname "$GP")
           cd $DIR
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug
 
       - name: Upload APK Final
         uses: actions/upload-artifact@v4
@@ -45,12 +51,11 @@ jobs:
           name: MSMSF-RACING-V12-BLACKWHITE-FINAL
           path: "**/*.apk"
 
-      - name: Release V.12 FIX 403
+      - name: Release V.12
         uses: softprops/action-gh-release@v2
         with:
           tag_name: V.12
           name: MSMSF RACING V.12 BlackWhite FIX
-          body: BlackWhite Dark Light - ECU JUKEN 5+ - Hybrid build
           files: "**/*.apk"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
