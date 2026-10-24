@@ -1,0 +1,45 @@
+name: Build MSMSF RACING APK
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Unzip project
+        run: |
+          ls -la
+          rm -rf ./app_source
+          unzip -o Juken-main.zip -d ./app_source
+          echo "=== CONTENT ==="
+          ls -la ./app_source/
+          ls -la ./app_source/Juken-main/ | head -n 50
+          echo "=== FIND GRADLEW ==="
+          find ./app_source -name "gradlew*" -o -name "build.gradle*"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build APK Debug
+        run: |
+          cd ./app_source/Juken-main
+          echo "Building in $(pwd)"
+          ls -la
+          gradle assembleDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MSMSF-RACING-APK
+          path: ./app_source/Juken-main/app/build/outputs/apk/debug/*.apk
+          
