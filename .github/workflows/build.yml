@@ -1,9 +1,11 @@
 name: Build MSMSF RACING APK
-
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -22,50 +24,13 @@ jobs:
           rm -rf source
           mkdir -p source
           unzip -o Juken-blackwhite-dark-light.zip -d source
-          echo "========== ISI ZIP LENGKAP =========="
-          find source -type f | sort
-          echo "====================================="
-          ls -R source | head -n 200
+          echo "========== ISI ASLI ZIP =========="
+          find source -type f -maxdepth 4 | sort
+          ls -lh source/
 
-      - name: Cari APK / Build kalau ada
-        run: |
-          echo "Cari APK yang sudah jadi di dalam zip..."
-          find source -name "*.apk" -exec cp {} ./ \;
-          ls -lh *.apk 2>/dev/null || echo "Tidak ada APK jadi di dalam zip"
-
-          # Kalau ada gradlew, baru build
-          GP=$(find source -name "gradlew" | head -n 1)
-          if [ ! -z "$GP" ]; then
-            echo "Ketemu gradlew di $GP, lagi build..."
-            DIR=$(dirname "$GP")
-            cd $DIR
-            chmod +x gradlew
-            ./gradlew assembleDebug
-            find . -name "*.apk" -exec cp {} $GITHUB_WORKSPACE/ \;
-          else
-            echo "Gak ada gradlew, skip build. Pakai APK yang ada di zip aja."
-          fi
-          
-          echo "=== HASIL AKHIR ==="
-          ls -lh *.apk || echo "Belum ada APK"
-
-      - name: Upload APK
+      - name: Upload ZIP Content for Check
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: MSMSF-RACING-V12-FINAL
-          path: |
-            *.apk
-            **/*.apk
-
-      - name: Release V.12
-        if: always()
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: V.12
-          name: MSMSF RACING V.12 BlackWhite
-          body: Auto build - cek Artifacts kalau Release kosong
-          files: |
-            *.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: ISI-ZIP-BLACKWHITE
+          path: source/
