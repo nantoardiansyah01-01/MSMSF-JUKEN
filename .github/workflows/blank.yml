@@ -1,0 +1,88 @@
+name: Build MSMSF RACING APK
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: RESTORE Juken-main.zip yang hilang
+        run: |
+          echo "=== File zip sekarang ==="
+          ls -lh *.zip 2>&1 || echo "Belum ada zip"
+          
+          if [ ! -f Juken-main.zip ]; then
+            echo "Juken-main.zip HILANG, restore dari history..."
+            # Cari semua commit yang pernah punya file ini
+            for COMMIT in $(git log --all --pretty=format:%H -- Juken-main.zip); do
+              echo "Cek commit $COMMIT"
+              git show $COMMIT:Juken-main.zip > Juken-main.zip 2>/dev/null
+              if [ -s Juken-main.zip ]; then
+                echo "Berhasil restore dari $COMMIT"
+                break
+              fi
+            done
+          fi
+          
+          echo "=== HASIL AKHIR ==="
+          ls -lh *.zip
+          echo "Ukuran Juken-main:"
+          du -h Juken-main.zip
+          echo "Ukuran BlackWhite:"
+          du -h Juken-blackwhite-dark-light.zip || true
+
+      - name: Build Hybrid
+        run: |
+          rm -rf source
+          mkdir source
+          echo "Unzip Juken-main..."
+          unzip -o -q Juken-main.zip -d source
+          echo "Unzip BlackWhite diatasnya..."
+          unzip -o -q Juken-blackwhite-dark-light.zip -d source || echo "BlackWhite zip gak ada, skip"
+          echo "Cari gradlew..."
+          find source -name "gradlew" -type f
+
+      - name: Build APK
+        run: |
+          GRADLEW=$(find source -type f -name "gradlew" | head -n 1)
+          echo "Gradlew ketemu di: $GRADLEW"
+          if [ -z "$GRADLEW" ]; then
+            echo "GAGAL: gradlew tidak ada! Isi source:"
+            find source -maxdepth 3 | head -n 100
+            exit 1
+          fi
+          DIR=$(dirname "$GRADLEW")
+          cd "$DIR"
+          chmod +x gradlew
+          ./gradlew assembleDebug --info
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MSMSF-RACING-V12-BLACKWHITE
+          path: "**/build/outputs/apk/debug/*.apk"
+          if-no-files-found: warn
+
+      - name: Release V12
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: V.12
+          name: MSMSF RACING V.12 BlackWhite - FINAL WORK
+          files: "**/build/outputs/apk/debug/*.apk"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
