@@ -17,48 +17,55 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Unzip and LIST
+      - name: Unzip and LIST ISI
         run: |
           rm -rf source
+          mkdir -p source
           unzip -o Juken-blackwhite-dark-light.zip -d source
-          echo "=== STRUKTUR LENGKAP ==="
-          find source -type f | head -n 100
-          echo "=== CARI GRADLEW ==="
-          find source -name "gradlew" -o -name "build.gradle" -o -name "pubspec.yaml" -o -name "*.apk" | head -n 50
-          ls -la source/
+          echo "========== ISI ZIP LENGKAP =========="
+          find source -type f | sort
+          echo "====================================="
+          ls -R source | head -n 200
 
-      - name: Try Build
+      - name: Cari APK / Build kalau ada
         run: |
-          # kalau ada gradlew
-          if [ -f "$(find source -name gradlew | head -n 1)" ]; then
-            GP=$(find source -name gradlew | head -n 1)
-            echo "Build gradle di $GP"
+          echo "Cari APK yang sudah jadi di dalam zip..."
+          find source -name "*.apk" -exec cp {} ./ \;
+          ls -lh *.apk 2>/dev/null || echo "Tidak ada APK jadi di dalam zip"
+
+          # Kalau ada gradlew, baru build
+          GP=$(find source -name "gradlew" | head -n 1)
+          if [ ! -z "$GP" ]; then
+            echo "Ketemu gradlew di $GP, lagi build..."
             DIR=$(dirname "$GP")
             cd $DIR
             chmod +x gradlew
             ./gradlew assembleDebug
-          # kalau flutter
-          elif [ -f "$(find source -name pubspec.yaml | head -n 1)" ]; then
-            echo "Ini project FLUTTER bos!"
-            sudo apt-get update
-            sudo apt-get install -y curl unzip
-            # install flutter
-            curl -o flutter.tar.xz https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.22.0-stable.tar.xz
-            tar xf flutter.tar.xz
-            export PATH="$PATH:`pwd`/flutter/bin"
-            cd source
-            FP=$(find . -name pubspec.yaml | head -n 1 | xargs dirname)
-            cd $FP
-            flutter build apk --debug
+            find . -name "*.apk" -exec cp {} $GITHUB_WORKSPACE/ \;
           else
-            echo "Gak ada gradlew & gak ada pubspec, cek log di atas!"
-            exit 1
+            echo "Gak ada gradlew, skip build. Pakai APK yang ada di zip aja."
           fi
+          
+          echo "=== HASIL AKHIR ==="
+          ls -lh *.apk || echo "Belum ada APK"
 
-      - name: Upload
+      - name: Upload APK
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: MSMSF-RACING-DIAGNOSIS
+          name: MSMSF-RACING-V12-FINAL
           path: |
+            *.apk
             **/*.apk
+
+      - name: Release V.12
+        if: always()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: V.12
+          name: MSMSF RACING V.12 BlackWhite
+          body: Auto build - cek Artifacts kalau Release kosong
+          files: |
+            *.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
