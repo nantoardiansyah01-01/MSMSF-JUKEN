@@ -19,31 +19,41 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Auto-Restore Juken-main.zip yang hilang
+      - name: PAKSA BALIKIN Juken-main.zip
         run: |
-          ls -lh *.zip
+          ls -lh *.zip || true
           if [ ! -f Juken-main.zip ]; then
-            echo "Juken-main.zip hilang, balikin dari commit #6..."
-            git checkout a630993 -- Juken-main.zip || git checkout HEAD~5 -- Juken-main.zip || git log --all --full-history -- "*Juken-main.zip" --pretty=format:"%H" | head -n 1 | xargs -I {} git checkout {} -- Juken-main.zip
+            echo "Mencoba balikin dari raw github commit #6..."
+            curl -L -o Juken-main.zip https://github.com/nantoardic/MSMSF-JUKEN/raw/a630993/Juken-main.zip
             ls -lh Juken-main.zip
-          else
-            echo "Juken-main.zip udah ada!"
           fi
+          if [ ! -f Juken-main.zip ]; then
+            echo "Coba commit lain..."
+            curl -L -o Juken-main.zip https://github.com/nantoardic/MSMSF-JUKEN/raw/main/Juken-main.zip || true
+          fi
+          ls -lh *.zip
 
       - name: Build Hybrid BlackWhite
         run: |
-          rm -rf source && mkdir source
+          rm -rf source && mkdir -p source
+          echo "=== Unzip Juken-main ==="
           unzip -o Juken-main.zip -d source
+          echo "=== Unzip BlackWhite di atasnya ==="
           unzip -o Juken-blackwhite-dark-light.zip -d source
-          find source -name "gradlew" | head -n 5
+          echo "=== CARI GRADLEW ==="
+          find source -name "gradlew*" -type f | head -n 10
+          ls -R source | head -n 100
 
       - name: Make executable and Build
         run: |
-          GP=$(find source -name "gradlew" | head -n 1)
+          GP=$(find source -type f -name "gradlew" | head -n 1)
+          echo "Found gradlew at: $GP"
+          if [ -z "$GP" ]; then echo "GRADLEW TIDAK KETEMU! Lihat list di atas!"; exit 1; fi
           DIR=$(dirname "$GP")
-          cd $DIR
+          echo "Dir: $DIR"
+          cd "$DIR"
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK Final
         uses: actions/upload-artifact@v4
@@ -55,7 +65,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: V.12
-          name: MSMSF RACING V.12 BlackWhite FIX
+          name: MSMSF RACING V.12 BlackWhite
           files: "**/*.apk"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
