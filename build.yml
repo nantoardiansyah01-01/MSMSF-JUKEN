@@ -1,45 +1,45 @@
 name: Build MSMSF RACING APK
+
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Unzip project
-        run: |
-          ls -la
-          rm -rf ./app_source
-          unzip -o Juken-main.zip -d ./app_source
-          echo "=== CONTENT ==="
-          ls -la ./app_source/
-          ls -la ./app_source/Juken-main/ | head -n 50
-          echo "=== FIND GRADLEW ==="
-          find ./app_source -name "gradlew*" -o -name "build.gradle*"
-
+      - uses: actions/checkout@v4
+      
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Build APK Debug
+      - name: Unzip blackwhite source
         run: |
-          cd ./app_source/Juken-main
-          echo "Building in $(pwd)"
-          ls -la
-          gradle assembleDebug --stacktrace
+          rm -rf source
+          unzip -o Juken-blackwhite-dark-light.zip -d source
+          ls source
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: Build APK
+        run: |
+          cd source
+          PROJECT=$(find . -name "gradlew" | head -n 1 | xargs dirname)
+          cd $PROJECT
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Create Release V.11
+        uses: softprops/action-gh-release@v1
         with:
-          name: MSMSF-RACING-APK
-          path: ./app_source/Juken-main/app/build/outputs/apk/debug/*.apk
-          
+          tag_name: V.11
+          name: MSMSF RACING V.11 BlackWhite Fix
+          body: Update gratis tema BlackWhite Dark Light - Bug fix ECU JUKEN 5+ connect & logger
+          files: source/**/app/build/outputs/apk/debug/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
