@@ -12,9 +12,17 @@ jobs:
 
       - name: Unzip project
         run: |
+          echo "=== FILES IN REPO ==="
           ls -la
-          unzip -o Juken-main.zip -d ./app_source
+          echo "=== UNZIP ALL ZIPS ==="
+          for zip in *.zip; do
+            echo "Unzipping $zip"
+            unzip -o "$zip" -d ./app_source
+          done
+          echo "=== INSIDE app_source ==="
           ls -la ./app_source
+          echo "=== FIND GRADLEW ==="
+          find . -name "gradlew"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -24,7 +32,7 @@ jobs:
 
       - name: Grant gradlew permission
         run: |
-          GRADLEW=$(find ./app_source -name "gradlew" | head -n 1)
+          GRADLEW=$(find . -name "gradlew" | head -n 1)
           echo "Found gradlew at $GRADLEW"
           chmod +x $GRADLEW
           echo "ROOT_DIR=$(dirname $GRADLEW)" >> $GITHUB_ENV
