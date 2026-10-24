@@ -17,45 +17,48 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Clean old build
+      - name: Unzip and LIST
         run: |
-          rm -rf source app build
-          rm -f *.apk
-
-      - name: Unzip BLACKWHITE source only
-        run: |
+          rm -rf source
           unzip -o Juken-blackwhite-dark-light.zip -d source
-          ls source
+          echo "=== STRUKTUR LENGKAP ==="
+          find source -type f | head -n 100
+          echo "=== CARI GRADLEW ==="
+          find source -name "gradlew" -o -name "build.gradle" -o -name "pubspec.yaml" -o -name "*.apk" | head -n 50
+          ls -la source/
 
-      - name: Make gradlew executable
+      - name: Try Build
         run: |
-          find source -name "gradlew" -exec chmod +x {} \;
+          # kalau ada gradlew
+          if [ -f "$(find source -name gradlew | head -n 1)" ]; then
+            GP=$(find source -name gradlew | head -n 1)
+            echo "Build gradle di $GP"
+            DIR=$(dirname "$GP")
+            cd $DIR
+            chmod +x gradlew
+            ./gradlew assembleDebug
+          # kalau flutter
+          elif [ -f "$(find source -name pubspec.yaml | head -n 1)" ]; then
+            echo "Ini project FLUTTER bos!"
+            sudo apt-get update
+            sudo apt-get install -y curl unzip
+            # install flutter
+            curl -o flutter.tar.xz https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.22.0-stable.tar.xz
+            tar xf flutter.tar.xz
+            export PATH="$PATH:`pwd`/flutter/bin"
+            cd source
+            FP=$(find . -name pubspec.yaml | head -n 1 | xargs dirname)
+            cd $FP
+            flutter build apk --debug
+          else
+            echo "Gak ada gradlew & gak ada pubspec, cek log di atas!"
+            exit 1
+          fi
 
-      - name: Build APK from new source
-        run: |
-          cd source
-          GRADLE_PATH=$(find . -type f -name "gradlew" | head -n 1)
-          echo "Found gradlew at: $GRADLE_PATH"
-          DIR=$(dirname "$GRADLE_PATH")
-          cd $DIR
-          ./gradlew assembleDebug --stacktrace
-
-      - name: Upload Artifact
+      - name: Upload
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: MSMSF-RACING-V12-BLACKWHITE
+          name: MSMSF-RACING-DIAGNOSIS
           path: |
             **/*.apk
-
-      - name: Create Release V.12 NEW
-        if: success()
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: V.12
-          name: MSMSF RACING V.12 - BlackWhite Dark Light FIX
-          body: FIXED gratis BlackWhite Dark Light - ECU JUKEN 5+
-          files: |
-            **/*.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
