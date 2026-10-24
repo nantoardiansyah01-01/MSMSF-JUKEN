@@ -17,9 +17,6 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Clean old build
         run: |
           rm -rf source app build
@@ -28,38 +25,36 @@ jobs:
       - name: Unzip BLACKWHITE source only
         run: |
           unzip -o Juken-blackwhite-dark-light.zip -d source
-          echo "=== ISI FOLDER BARU ==="
-          ls -lh source
+          ls source
+
+      - name: Make gradlew executable
+        run: |
+          find source -name "gradlew" -exec chmod +x {} \;
 
       - name: Build APK from new source
         run: |
           cd source
-          # Cari lokasi gradlew yang bener di folder baru
           GRADLE_PATH=$(find . -type f -name "gradlew" | head -n 1)
           echo "Found gradlew at: $GRADLE_PATH"
           DIR=$(dirname "$GRADLE_PATH")
           cd $DIR
-          chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
       - name: Upload Artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: MSMSF-RACING-V12-BLACKWHITE
           path: |
             **/*.apk
-            source/**/*.apk
 
       - name: Create Release V.12 NEW
+        if: success()
         uses: softprops/action-gh-release@v2
         with:
           tag_name: V.12
           name: MSMSF RACING V.12 - BlackWhite Dark Light FIX
-          body: |
-            FIXED: Update gratis BlackWhite Dark Light
-            - Tema Dark Light fixed
-            - Connect ECU BRT JUKEN 5+ & Logger OK
-            - Source: Juken-blackwhite-dark-light.zip
+          body: FIXED gratis BlackWhite Dark Light - ECU JUKEN 5+
           files: |
             **/*.apk
         env:
